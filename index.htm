@@ -226,7 +226,12 @@ think {
     background-color: #e0e0e0;
     cursor: pointer;
 }
-
+.live-update-checkbox {
+            margin: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -253,6 +258,7 @@ think {
  <textarea id="promptInput" cols="60" rows="15" type="text" placeholder="Geben Sie Ihren Prompt ein...">Geben Sie Ihren Prompt ein...</textarea>
  <div class="button-container">
   <button id="sendButton" onclick="addPrompt()">Senden</button>
+  <input type="checkbox" id="liveUpdateCheckbox" checked>
   <button id="copyOutputBtn" onclick="copyOutputToInput()">Kopieren</button>
  </div>
 </div>
@@ -409,7 +415,7 @@ applySort(entries) {
 
 initFilterSelect() {
     if (this.filterSelect) return;
-    console.log("initFilterSelect");
+    //console.log("initFilterSelect");
     const filterSelect = document.getElementById('filterSelect');
 	filterSelect.innerHTML="";
     // 'Alles anzeigen' Option
@@ -449,7 +455,7 @@ initFilterSelect() {
     filterSelect.appendChild(categoryOptions);
 
     filterSelect.addEventListener('change', (e) => {
-        console.log("change filterSelect");
+        //console.log("change filterSelect");
         this.filterValue = e.target.value;
         this.render();
     });
@@ -536,7 +542,7 @@ render() {
     return false;
 };
 	const modelFilter = document.getElementById('filterSelect');
-	console.log(modelFilter);
+	//console.log(modelFilter);
     // Filter anwenden, falls vorhanden
     if (this.filterValue && this.filterValue !== 'all') {
 		if(isValueInOptgroup(
@@ -553,7 +559,7 @@ render() {
     // Sortieren anwenden
     filteredEntries = this.applySort(filteredEntries);
 
-    console.log("filteredEntries", filteredEntries);
+    //console.log("filteredEntries", filteredEntries);
     this.chatList.innerHTML = ''; // Clear existing entries
     this.displayEntries(filteredEntries);
 }
@@ -646,7 +652,10 @@ function toggleCategoryInput() {
 		categoryInput.style.display = 'none';
     }
 }
-
+function toggleLiveUpdate() {
+        const isLiveUpdating = document.getElementById('liveUpdateCheckbox').checked;
+        document.getElementById('output').innerHTML = isLiveUpdating ? 'Aktualisieren...' : 'Aktualisierung angehalten';
+    }
 function generateId() {
 return Date.now().toString();
 }
@@ -695,79 +704,23 @@ function addPrompt() {
     };
 	promptsArray.push(newPrompt);
     updateQueueDisplay(promptsArray);
-    promptInput.value = '';
+    
 	sendPrompt();
 }
 
 async function sendPrompt() {
-	const outputDiv = document.getElementById('output');
-	let lastUpdateTime=0;
     try {
-        if (promptsArray.length === 0 || isProcessing) {
-            return;
-        }
+        if (promptsArray.length === 0 || isProcessing) return;
 
         isProcessing = true;
         const originalPrompt = promptsArray.shift();
 
-        // Rest des sendPrompt()-Codes bleibt gleich
-        const response = await fetch('http://localhost:11434/api/generate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: originalPrompt.model,
-                prompt: originalPrompt.prompt,
-                temperature: originalPrompt.temperature,
-                max_tokens: originalPrompt.max_tokens,
-                streaming: true
-            })
-        });
+        updatePromptStatus(originalPrompt, 'processing');
 
-        let result = '';
-        const reader = response.body.getReader();
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-const currentTime = Date.now();
-    
-    // Wenn mehr als 2 Sekunden seit der letzten Update sind, gib die aktuellen Ergebnisse aus
-    if (currentTime - lastUpdateTime > 2000) {
-        outputDiv.innerHTML = result;
-        lastUpdateTime = currentTime; // Aktualisiere die letzte Update Zeit
-    }
-            const decodedValue = new TextDecoder().decode(value);
-            //console.log("decodedValue:", decodedValue);
-
-            try {
-                const json = JSON.parse(decodedValue.trim());
-                if (json.response !== undefined) {
-                    result += json.response;
-                }
-            } catch (error) {
-                console.error('Fehler beim Parsen:', error);
-                break;
-            }
-        }
-
-        
-        outputDiv.textContent = result;
-        saveChatToLocalStorage(
-            originalPrompt.model,
-            originalPrompt.prompt,
-            result,
-            originalPrompt.temperature,
-            originalPrompt.max_tokens,
-			originalPrompt.category,
-        );
-        // Aktualisiere die Anzeige
-        chatDisplay.load();
+        await sendPromptToApi(originalPrompt);
 
         isProcessing = false;
 
-        // Nächsten Prompt in der Warteschlange senden
         if (promptsArray.length > 0) {
             await sendPrompt();
         }
@@ -775,6 +728,94 @@ const currentTime = Date.now();
         console.error('Error:', error);
         const outputDiv = document.getElementById('output');
         outputDiv.innerHTML = `Fehler: ${error.message}`;
+
+        if (promptsArray.length > 0) {
+            updatePromptStatus(promptsArray[0], 'error');
+        } else {
+            updatePromptStatus(originalPrompt, 'error');
+        }
+    }
+}
+
+function updatePromptStatus(prompt, status) {
+    prompt.status = status;
+    updateQueueDisplay([prompt]); // Aktualisiert nur das betreffende Prompt
+}
+
+async function sendPromptToApi(prompt) {
+    try {
+        const response = await fetch('http://localhost:11434/api/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: prompt.model,
+                prompt: prompt.prompt,
+                temperature: prompt.temperature,
+                max_tokens: prompt.max_tokens,
+                streaming: true
+            })
+        });
+
+        await handleStreamingResponse(response, prompt);
+    } catch (error) {
+        throw error;
+    }
+}
+async function handleStreamingResponse(response, prompt, outputDiv) {
+    let result = '';
+    const reader = response.body.getReader();
+
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const decodedValue = new TextDecoder().decode(value);
+
+            if (decodedValue.includes('Error')) {
+                throw new Error(decodedValue);
+            }
+
+            try {
+                const json = JSON.parse(decodedValue.trim());
+                if (json.response !== undefined) {
+                    result += json.response;
+                }
+            } catch (parseError) {
+                console.error('Fehler beim Parsen:', parseError);
+                break;
+            }
+        }
+
+        if (outputDiv) {
+            outputDiv.textContent = result;
+        }
+
+        saveChatToLocalStorage(
+            prompt.model,
+            prompt.prompt,
+            result,
+            prompt.temperature,
+            prompt.max_tokens,
+            prompt.category,
+        );
+
+        updatePromptStatus(prompt, 'processed');
+    } catch (error) {
+        throw error;
+    }
+}
+function handleError(error, outputDiv) {
+    console.error('Error:', error);
+    if (outputDiv) {
+        outputDiv.innerHTML = `Fehler: ${error.message}`;
+    }
+    if (promptsArray.length > 0) {
+        updatePromptStatus(promptsArray[0], 'error');
+    } else {
+        updatePromptStatus(promptsArray[0], 'error');
     }
 }
 
@@ -791,6 +832,8 @@ function updateQueueDisplay(prompts) {
         let statusBadge = '';
         if (prompt.status === 'queued') {
             statusBadge = '<span class="status">[QUEUED]</span> ';
+        } else if (prompt.status === 'processing') {
+            statusBadge = '<span class="status">[BEARBEITEN]</span> ';
         } else if (prompt.status === 'processed') {
             statusBadge = '<span class="status success">[ERFOLGTE]</span> ';
         } else {
@@ -813,7 +856,7 @@ function updateQueueDisplay(prompts) {
         div.innerHTML = `
             ${statusBadge}
             <span class="date">${date}</span>
-			<span class"model">${prompt.model}</span>
+			<span class="model">${prompt.model}</span>
             <span class="prompt">${truncatedPrompt}</span>
         `;
 
