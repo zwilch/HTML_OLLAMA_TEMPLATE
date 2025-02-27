@@ -5,5 +5,4 @@ HTML file for local ollama chat
 set ENVIROMENT VAR to
 * OLLAMA_ORIGINS:*
 
-# TODO
-Work on "Kategorie" add saved Kategorie to DropDown List
+
