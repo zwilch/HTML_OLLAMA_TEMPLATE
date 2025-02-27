@@ -196,7 +196,6 @@ think {
 }
 
 .setting-row input {
-    width: 150px;
     padding: 4px;
 }
 .settings-column select {
@@ -692,7 +691,7 @@ function addPrompt() {
         id: generateId(),
 		temperature: parseFloat(temperatureInput.value) || 0.7,
         max_tokens: parseInt(maxTokensInput.value) || 4096,
-		category: selectedValue === 'new' ? categoryInput.value.trim() : categorySelect.value
+		category: categorySelect.value === 'new' ? categoryInput.value.trim() : categorySelect.value
     };
 	promptsArray.push(newPrompt);
     updateQueueDisplay(promptsArray);
