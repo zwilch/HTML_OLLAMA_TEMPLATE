@@ -191,7 +191,6 @@ think {
 
 .setting-row label {
     display: inline-block;
-    width: 120px;
     text-align: right;
 }
 
@@ -258,7 +257,7 @@ think {
  <textarea id="promptInput" cols="60" rows="15" type="text" placeholder="Geben Sie Ihren Prompt ein...">Geben Sie Ihren Prompt ein...</textarea>
  <div class="button-container">
   <button id="sendButton" onclick="addPrompt()">Senden</button>
-  <input type="checkbox" id="liveUpdateCheckbox" checked>
+  <input type="checkbox" id="liveUpdateCheckbox" checked  >
   <button id="copyOutputBtn" onclick="copyOutputToInput()">Kopieren</button>
  </div>
 </div>
@@ -654,8 +653,8 @@ window.onload = function() {
 	// Event-Listener für das Kategorie-Dropdown
     document.getElementById('categorySelect').addEventListener('change', () => {
         toggleCategoryInput();
-});
-
+	});
+	document.getElementById('liveUpdateCheckbox').addEventListener('change', toggleLiveUpdate);
     // Initialen Status des Kategorie-Inputs setzen
     toggleCategoryInput();
 };
@@ -676,8 +675,11 @@ function toggleCategoryInput() {
     }
 }
 function toggleLiveUpdate() {
+
         const isLiveUpdating = document.getElementById('liveUpdateCheckbox').checked;
         document.getElementById('output').innerHTML = isLiveUpdating ? 'Aktualisieren...' : 'Aktualisierung angehalten';
+		
+		console.log("toggleLiveUpdate()",document.getElementById('liveUpdateCheckbox').checked);
     }
 function generateId() {
 return Date.now().toString();
@@ -786,8 +788,9 @@ async function sendPromptToApi(prompt) {
         throw error;
     }
 }
-async function handleStreamingResponse(response, prompt, outputDiv) {
+async function handleStreamingResponse(response, prompt) {
     let result = '';
+	const outputDiv = document.getElementById("output");
     const reader = response.body.getReader();
 
     try {
@@ -805,16 +808,18 @@ async function handleStreamingResponse(response, prompt, outputDiv) {
                 const json = JSON.parse(decodedValue.trim());
                 if (json.response !== undefined) {
                     result += json.response;
+					//console.log(json.response);
                 }
+				if (outputDiv && document.getElementById('liveUpdateCheckbox').checked) {
+					outputDiv.innerHTML = result;
+				}
             } catch (parseError) {
                 console.error('Fehler beim Parsen:', parseError);
                 break;
             }
         }
 
-        if (outputDiv) {
-            outputDiv.textContent = result;
-        }
+        
 
         saveChatToLocalStorage(
             prompt.model,
