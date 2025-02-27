@@ -343,7 +343,7 @@ load() {
     
     // Initialisiere das Filter-Select, wenn noch nicht geschehen
  	this.initFilterSelect();
-
+	this.updateCategorySelect();
 	this.initSortCheckbox();
     this.render();
 }
@@ -563,7 +563,6 @@ render() {
     this.chatList.innerHTML = ''; // Clear existing entries
     this.displayEntries(filteredEntries);
 }
-
 	
 displayEntries(entries) {
 			
@@ -574,7 +573,31 @@ displayEntries(entries) {
 				this.chatList.appendChild(chatItem);
 			});
 	}
-	
+
+updateCategorySelect() {
+        const categories = this.getUniqueCategories();
+        const categorySelect = document.getElementById('categorySelect');
+
+        // "Default" und "new" müssen immer vorhanden sein
+        if (!categories.includes('Default')) {
+            categories.push('Default');
+        }
+        if (!categories.includes('new')) {
+            categories.push('new');
+        }
+
+        // Dropdown leeren
+        categorySelect.innerHTML = '<option value="Default">Default</option><option value="new">NEUE Kategorie</option>';
+
+        // Unique Kategorien hinzufügen
+        categories.filter(cat => cat !== 'Default' && cat !== 'new').forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            categorySelect.appendChild(option);
+        });
+}	
+
 addEventListeners(chatItem, entry) {
         // Mouseover Event
         chatItem.addEventListener('mouseover', () => {
