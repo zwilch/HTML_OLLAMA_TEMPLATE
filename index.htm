@@ -429,17 +429,17 @@ initFilterSelect() {
 
     // Modell-Optionen hinzufügen
     const uniqueModels = this.getUniqueModels();
+	const modelGroup = document.createElement('optgroup');
+    modelGroup.label = "Modelle";
     uniqueModels.forEach(model => {
-        const modelGroup = document.createElement('optgroup');
-        modelGroup.label = model;
         const option = document.createElement('option');
         option.value = model;
         const count = this.historyData.filter(entry => entry.model === model).length;
         option.textContent = `${model} (${count})`;
-        modelGroup.appendChild(option);
-        filterSelect.appendChild(modelGroup);
+        modelGroup.appendChild(option);        
     });
-
+	filterSelect.appendChild(modelGroup);
+	
     // Kategorie-Optionen hinzufügen
     const categoryOptions = document.createElement('optgroup');
     categoryOptions.label = 'Kategorie';
