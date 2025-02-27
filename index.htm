@@ -850,7 +850,7 @@ function updateQueueDisplay(prompts) {
         const div = document.createElement('div');
         div.className = 'prompt-item';
         div.classList.add(prompt.status === 'queued' ? 'queued' : 
-                        prompt.status === 'processed' ? 'processed' : 'failed');
+                        prompt.status === 'processing' ? 'processing' : 'failed');
         
         let statusBadge = '';
         if (prompt.status === 'queued') {
@@ -879,16 +879,28 @@ function updateQueueDisplay(prompts) {
         div.innerHTML = `
             ${statusBadge}
             <span class="date">${date}</span>
-			<span class="model">${prompt.model}</span>
+            <span class="model">${prompt.model}</span>
             <span class="prompt">${truncatedPrompt}</span>
         `;
 
+        // Delete-Button erstellen und hinzufügen
+		if (prompt.status === 'queued') {
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'delete-button';
+        deleteButton.textContent = 'Löschen';
+        deleteButton.onclick = () => deletePromptFromQueue(prompt.id);
+        div.appendChild(deleteButton);
+		}//if queued
         // Click-Event für die Anzeige der Details
         div.onclick = () => showPromptDetails(prompt);
         queueList.appendChild(div);
     });
 }
 
+function deletePromptFromQueue(promptId) {
+    promptsArray = promptsArray.filter(prompt => prompt.id !== promptId);
+    updateQueueDisplay(promptsArray);
+}
 function showPromptDetails(prompt) {
     const promptInput = document.getElementById('promptInput');
     const outputDiv = document.getElementById('output');
