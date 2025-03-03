@@ -249,6 +249,7 @@ think {
 </div>
         
 <div class="middle-column">
+<input type="text" id="modelFilterInput" placeholder="Filter Modelle...">
 <select id="modelSelect">
 <!-- Modelle werden hier dynamisch geladen -->
 </select>
@@ -257,6 +258,7 @@ think {
  <textarea id="promptInput" cols="60" rows="15" type="text" placeholder="Geben Sie Ihren Prompt ein...">Geben Sie Ihren Prompt ein...</textarea>
  <div class="button-container">
   <button id="sendButton" onclick="addPrompt()">Senden</button>
+  <button id="stopButton" onclick="stopPrompt()" disabled>Stoppen</button>
   <input type="checkbox" id="liveUpdateCheckbox" checked  >
   <button id="copyOutputBtn" onclick="copyOutputToInput()">Kopieren</button>
  </div>
@@ -328,7 +330,7 @@ getUniqueModels() {
 load() {
 
     const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
-	console.log("load()", history);
+//	console.log("load()", history);
     this.historyData = history.map(entry => ({
         id: entry.id,
         date: new Date(entry.id),
@@ -542,7 +544,7 @@ updateCategory(entryId, newCategory) {
     }
 }
 render() {
-    console.log("render()");
+//    console.log("render()");
     let filteredEntries = this.historyData;
 	
 	const isValueInOptgroup = function(selectElement, selectedValue, targetOptgroupLabel) {
@@ -661,6 +663,7 @@ removeEntry(entryId) {
 let isProcessing = false;
 let promptsArray = [];
 let chatDisplay = null;
+const abortController = new AbortController();
        
 window.onload = function() {
  fetch('http://localhost:11434/api/tags')
@@ -680,6 +683,10 @@ window.onload = function() {
 	document.getElementById('liveUpdateCheckbox').addEventListener('change', toggleLiveUpdate);
     // Initialen Status des Kategorie-Inputs setzen
     toggleCategoryInput();
+	
+	// Initialisierung der Prompts-Queue aus dem localStorage
+	promptsArray = JSON.parse(localStorage.getItem('promptsQueue')) || [];
+	console.log("promptsArray",promptsArray);
 };
 function toggleCategoryInput() {
     const categorySelect = document.getElementById('categorySelect');
@@ -704,27 +711,53 @@ function toggleLiveUpdate() {
 		
 		console.log("toggleLiveUpdate()",document.getElementById('liveUpdateCheckbox').checked);
     }
+function toggleProcessingState(enabled) {
+    
+    const stopButton = document.getElementById('stopButton');
+    
+    
+    stopButton.disabled = !enabled;
+}
 function generateId() {
 return Date.now().toString();
 }
 function populateModelSelect(models) {
             models = models.models;
             models.sort((a, b) => b.size < a.size);
-            const select = document.getElementById('modelSelect');
+			// Hole den aktuellen Filter-Wert
+            const filterValue = document.getElementById('modelFilterInput').value.toLowerCase();
+			            
+			const select = document.getElementById('modelSelect');
+			select.innerHTML = ''; // Clear existing options
             for (const model in models) {
                 if (models.hasOwnProperty(model)) {
+				 if(models[model].name.toLowerCase().includes(filterValue)){
                     const option = document.createElement('option');
                     option.value = models[model].name;
                     option.textContent = models[model].name;
                     select.appendChild(option);
-                }
+                 }// filterValue
+				}
             }
             
             if (select.length > 0) {
                 select.selectedIndex = 0;
             }
         }
-
+// Speichert die Prompts-Queue im localStorage
+function savePromptsQueue() {
+    localStorage.setItem('promptsQueue', JSON.stringify(promptsArray));
+}
+function stopPrompt() {
+    if (isProcessing) {
+        // Hole den aktiven Request und.abortiere ihn
+        if (abortController) {
+            abortController.abort();
+            const outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = 'Aktualisierung abgebrochen';
+        }
+    }
+}
 function copyOutputToInput() {
             const outputDiv = document.getElementById('output');
             const promptInput = document.getElementById('promptInput');
@@ -750,9 +783,12 @@ function addPrompt() {
         max_tokens: parseInt(maxTokensInput.value) || 4096,
 		category: categorySelect.value === 'new' ? categoryInput.value.trim() : categorySelect.value
     };
+	if (promptsArray.length === 0) {
+        document.getElementById('stopButton').disabled = true;
+    }
 	promptsArray.push(newPrompt);
-    updateQueueDisplay(promptsArray);
-    
+	console.log("addPrompt() promptsArray ",promptsArray);
+    updateQueueDisplay(promptsArray);  
 	sendPrompt();
 }
 
@@ -761,11 +797,12 @@ async function sendPrompt() {
         if (promptsArray.length === 0 || isProcessing) return;
 
         isProcessing = true;
+		toggleProcessingState(true);
         const originalPrompt = promptsArray.shift();
 
         updatePromptStatus(originalPrompt, 'processing');
 
-        await sendPromptToApi(originalPrompt);
+        await sendPromptToApi(originalPrompt, abortController);
 
         isProcessing = false;
 
@@ -782,6 +819,9 @@ async function sendPrompt() {
         } else {
             updatePromptStatus(originalPrompt, 'error');
         }
+    } finally {
+        isProcessing = false;
+        toggleProcessingState(false);
     }
 }
 
@@ -790,7 +830,7 @@ function updatePromptStatus(prompt, status) {
     updateQueueDisplay([prompt]); // Aktualisiert nur das betreffende Prompt
 }
 
-async function sendPromptToApi(prompt) {
+async function sendPromptToApi(prompt,controller) {
     try {
         const response = await fetch('http://localhost:11434/api/generate', {
             method: 'POST',
@@ -803,7 +843,8 @@ async function sendPromptToApi(prompt) {
                 temperature: prompt.temperature,
                 max_tokens: prompt.max_tokens,
                 streaming: true
-            })
+            }),
+			signal: controller.signal 
         });
 
         await handleStreamingResponse(response, prompt);
@@ -811,7 +852,7 @@ async function sendPromptToApi(prompt) {
         throw error;
     }
 }
-async function handleStreamingResponse(response, prompt) {
+async function handleStreamingResponse(response, prompt, controller) {
     let result = '';
 	const outputDiv = document.getElementById("output");
     const reader = response.body.getReader();
@@ -854,6 +895,8 @@ async function handleStreamingResponse(response, prompt) {
         );
 
         updatePromptStatus(prompt, 'processed');
+		// Speichere die aktualisierte Warteschlange im localStorage
+        savePromptsQueue();
     } catch (error) {
         throw error;
     }
@@ -928,6 +971,7 @@ function updateQueueDisplay(prompts) {
 function deletePromptFromQueue(promptId) {
     promptsArray = promptsArray.filter(prompt => prompt.id !== promptId);
     updateQueueDisplay(promptsArray);
+	savePromptsQueue();
 }
 function showPromptDetails(prompt) {
     const promptInput = document.getElementById('promptInput');
