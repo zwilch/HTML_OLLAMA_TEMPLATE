@@ -468,10 +468,10 @@ getUniqueModels() {
     }
 
 createChatItem(entry) {
-        const chatItem = document.createElement('div');
-        chatItem.className = 'chat-item';
+ const chatItem = document.createElement('div');
+ chatItem.className = 'chat-item';
 
-        const dateSpan = document.createElement('span');
+    const dateSpan = document.createElement('span');
     dateSpan.className = 'date';
     // Korrekte Datumsformatierung
     const date = new Date(entry.date);
@@ -482,9 +482,23 @@ createChatItem(entry) {
         hour: '2-digit',
         minute: '2-digit'
     });
-		const categorySpan = document.createElement('span');
+/* 		const categorySpan = document.createElement('span');
 		categorySpan.className = 'category';
 		categorySpan.textContent = `Kategorie: ${entry.category}`;
+*/
+const categorySelect = document.createElement('select');
+    categorySelect.className = 'category-select';
+    categorySelect.onchange = (e) => this.updateCategory(entry.id, e.target.value);
+const categoryOptions = this.getUniqueCategories().filter(cat => cat !== 'new').concat(['new']);
+    categoryOptions.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        if (category === entry.category) {
+            option.selected = true;
+        }
+        categorySelect.appendChild(option);
+    });	
 
         const modelSpan = document.createElement('span');
         modelSpan.className = 'model';
@@ -508,7 +522,7 @@ createChatItem(entry) {
         deleteButton.addEventListener('click', () => this.removeEntry(entry.id));
 
         chatItem.appendChild(dateSpan);
-		chatItem.appendChild(categorySpan);
+		chatItem.appendChild(categorySelect);
         chatItem.appendChild(modelSpan);
         chatItem.appendChild(temperatureSpan);
         chatItem.appendChild(maxTokensSpan);
@@ -518,6 +532,15 @@ createChatItem(entry) {
         return chatItem;
     }
 
+updateCategory(entryId, newCategory) {
+    const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+    const updatedEntry = history.find(entry => entry.id === entryId);
+    if (updatedEntry) {
+        updatedEntry.category = newCategory;
+        localStorage.setItem('chatHistory', JSON.stringify(history));
+        this.load(); // Reload die Chat History nach der Änderung
+    }
+}
 render() {
     console.log("render()");
     let filteredEntries = this.historyData;
