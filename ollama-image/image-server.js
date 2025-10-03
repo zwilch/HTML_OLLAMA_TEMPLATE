@@ -195,7 +195,7 @@ app.post('/api/process-all', async (req, res) => {
                                     'Content-Type': 'application/json'
                                 },
                                 body: JSON.stringify({
-									model:"qwen2.5vl:7b",
+									model:model,
 									prompt:prompta,
 									stream: false,
 									keep_alive: 30,
@@ -282,4 +282,5 @@ app.listen(PORT, () => {
     console.log(`Image server running on http://localhost:${PORT}`);
     console.log(`Images directory: ${IMAGES_DIR}`);
     console.log(`Output directory: ${OUTPUT_DIR}`);
+
 });
