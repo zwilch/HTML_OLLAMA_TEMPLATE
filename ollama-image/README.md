@@ -5,6 +5,11 @@
 ├── output/         # Results will be saved here
 └── public/         # Create this folder and place the HTML file here as index.html
 ```
+# Coded with AI
+Qwen3 Coder
+Qwen3 WebDev
+Z.ai GLM 4.6
+
 # Install
 ``npm install``
 # Start the server
