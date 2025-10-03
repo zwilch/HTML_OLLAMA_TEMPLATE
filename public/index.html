@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Batch Image Region Selector & OCR Processor</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .toolbar {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .toolbar-section {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn-success {
+            background: #27ae60;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .image-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .image-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .image-card-header {
+            background: #34495e;
+            color: white;
+            padding: 15px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .image-preview {
+            position: relative;
+            background: #f0f0f0;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .image-preview img {
+            max-width: 100%;
+            max-height: 300px;
+            display: block;
+        }
+        
+        .regions-list {
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .region-item {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        
+        .region-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .region-coords {
+            color: #7f8c8d;
+            font-family: monospace;
+            font-size: 0.85em;
+        }
+        
+        .delete-region-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+        
+        .delete-region-btn:hover {
+            background: #c0392b;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            max-width: 90%;
+            max-height: 90%;
+            overflow: auto;
+            position: relative;
+        }
+        
+        .modal-header {
+            background: #34495e;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .close-modal {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        
+        .close-modal:hover {
+            color: #bdc3c7;
+        }
+        
+        .image-editor {
+            position: relative;
+            display: inline-block;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f0f0f0;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+        }
+        
+        #editorCanvas {
+            display: block;
+            max-width: 100%;
+            cursor: crosshair;
+        }
+        
+        .selection-overlay {
+            position: absolute;
+            border: 3px solid #27ae60;
+            background: rgba(39, 174, 96, 0.2);
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .selection-info {
+            position: absolute;
+            bottom: -25px;
+            right: 0;
+            background: rgba(39, 174, 96, 0.9);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-family: monospace;
+            white-space: nowrap;
+        }
+        
+        .selection-handle {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #27ae60;
+            border: 2px solid white;
+            border-radius: 50%;
+            z-index: 10;
+            /* FIX: Allow mouse events to pass through to the canvas underneath.
+               The canvas event handler will then determine which handle was clicked
+               based on coordinates. This solves the issue where handles were not
+               clickable because the event listener was on the canvas. */
+            pointer-events: none;
+        }
+        
+        .selection-handle-nw { top: -6px; left: -6px; cursor: nw-resize; }
+        .selection-handle-ne { top: -6px; right: -6px; cursor: ne-resize; }
+        .selection-handle-sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+        .selection-handle-se { bottom: -6px; right: -6px; cursor: se-resize; }
+        
+        .editor-controls {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .control-input {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #3498db;
+            border-radius: 5px;
+        }
+        
+        .regions-preview {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .processing-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .processing-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .processing-log {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            text-align: left;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .log-entry.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .log-entry.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .log-entry.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .batch-controls {
+            background: #e8f4f8;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .batch-controls h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .prompt-list {
+            margin-bottom: 15px;
+        }
+        
+        .prompt-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .prompt-input {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #3498db;
+            border-radius: 5px;
+        }
+        
+        .remove-prompt-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .remove-prompt-btn:hover {
+            background: #c0392b;
+        }
+        
+        .add-prompt-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .add-prompt-btn:hover {
+            background: #229954;
+        }
+        
+        .model-select {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #3498db;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            flex: 1;
+            min-width: 150px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .stat-label {
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .grid-snap-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .grid-snap-control input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .grid-snap-control label {
+            margin: 0;
+            font-weight: normal;
+        }
+        
+        .grid-size-input {
+            width: 80px;
+            padding: 5px;
+            border: 2px solid #3498db;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .size-input-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .size-input-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .size-input-btn:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Batch Image Region Selector & OCR Processor</h1>
+            <p>Select regions on images and process them with AI for OCR</p>
+        </div>
+        
+        <div class="toolbar">
+            <div class="toolbar-section">
+                <button class="btn" id="refreshBtn">🔄 Refresh Images</button>
+                <button class="btn btn-success" id="processAllBtn">🚀 Process All Images</button>
+            </div>
+            <div class="toolbar-section">
+                <span id="imageCount">Loading images...</span>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="batch-controls">
+                <h3>Batch Processing Settings</h3>
+                <select id="modelSelect" class="model-select">
+                    <option value="">Loading models...</option>
+                </select>
+                <div class="prompt-list" id="promptList">
+                    <div class="prompt-item">
+                        <input type="text" class="prompt-input" value="Führe OCR durch. Antworte nur mit dem Text vom OCR füge nichts davor oder danach hinzu." placeholder="Enter prompt...">
+                        <button class="remove-prompt-btn">✕</button>
+                    </div>
+                </div>
+                <button class="add-prompt-btn" id="addPromptBtn">+ Add Prompt</button>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalImages">0</div>
+                    <div class="stat-label">Total Images</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalRegions">0</div>
+                    <div class="stat-label">Total Regions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="processedImages">0</div>
+                    <div class="stat-label">Processed Images</div>
+                </div>
+            </div>
+            
+            <div class="images-grid" id="imagesGrid">
+                <!-- Images will be loaded here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Image Editor Modal -->
+    <div id="editorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="editorTitle">Edit Image Regions</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="image-editor">
+                    <canvas id="editorCanvas"></canvas>
+                    <div id="editorSelectionOverlay" class="selection-overlay">
+                        <div class="selection-handle selection-handle-nw"></div>
+                        <div class="selection-handle selection-handle-ne"></div>
+                        <div class="selection-handle selection-handle-sw"></div>
+                        <div class="selection-handle selection-handle-se"></div>
+                        <div class="selection-info" id="editorSelectionInfo">X: 0, Y: 0, W: 100, H: 100</div>
+                    </div>
+                </div>
+                
+                <div class="editor-controls">
+                    <div class="control-group">
+                        <label>Selection Size</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <div class="size-input-container">
+                                <input type="number" id="selectionWidth" class="control-input" placeholder="Width" value="100" style="width: 80px;">
+                                <button class="size-input-btn" data-input="selectionWidth" data-direction="up">▲</button>
+                                <button class="size-input-btn" data-input="selectionWidth" data-direction="down">▼</button>
+                            </div>
+                            <div class="size-input-container">
+                                <input type="number" id="selectionHeight" class="control-input" placeholder="Height" value="100" style="width: 80px;">
+                                <button class="size-input-btn" data-input="selectionHeight" data-direction="up">▲</button>
+                                <button class="size-input-btn" data-input="selectionHeight" data-direction="down">▼</button>
+                            </div>
+                            <button class="btn" id="addRegionBtn">+ Add Region</button>
+                        </div>
+                        <div class="grid-snap-control">
+                            <input type="checkbox" id="gridSnapToggle" checked>
+                            <label for="gridSnapToggle">Grid Snap Size Only</label>
+                            <input type="number" id="gridSizeInput" class="grid-size-input" value="28" min="1">
+                            <label for="gridSizeInput">px</label>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>Saved Regions</label>
+                        <div class="regions-preview" id="regionsPreview">
+                            <!-- Regions will be listed here -->
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button class="btn btn-success" id="saveRegionsBtn">💾 Save Regions</button>
+                        <button class="btn btn-danger" id="clearRegionsBtn">🗑️ Clear All</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Processing Modal -->
+    <div id="processingModal" class="processing-modal">
+        <div class="processing-content">
+            <h2>Processing Images...</h2>
+            <div class="spinner"></div>
+            <p id="processingStatus">Initializing...</p>
+            <div class="processing-log" id="processingLog"></div>
+            <button class="btn" id="closeProcessingBtn" style="display: none; margin-top: 20px;">Close</button>
+        </div>
+    </div>
+
+    <script>
+        class ImageRegionManager {
+            constructor() {
+                this.images = [];
+                this.currentImage = null;
+                this.regions = [];
+                this.models = [];
+                
+                // Editor properties
+                this.canvas = document.getElementById('editorCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.selection = {
+                    x: 0,
+                    y: 0,
+                    width: 100,
+                    height: 100
+                };
+                
+                // Grid snap properties
+                this.gridSnap = true;
+                this.gridSize = 28;
+                
+                // Drag properties
+                this.isDragging = false;
+                this.isResizing = false;
+                this.isCreatingSelection = false;
+                this.dragStartX = 0;
+                this.dragStartY = 0;
+                this.resizeHandle = null;
+                this.originalSelection = null;
+                
+                this.initializeEventListeners();
+                this.loadImages();
+                this.loadModels();
+            }
+            
+            initializeEventListeners() {
+                // Toolbar buttons
+                document.getElementById('refreshBtn').addEventListener('click', () => this.loadImages());
+                document.getElementById('processAllBtn').addEventListener('click', () => this.processAllImages());
+                document.getElementById('addPromptBtn').addEventListener('click', () => this.addPrompt());
+                
+                // Modal events
+                document.querySelectorAll('.close-modal').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.target.closest('.modal').style.display = 'none';
+                    });
+                });
+                
+                // Editor events
+                document.getElementById('addRegionBtn').addEventListener('click', () => this.addRegion());
+                document.getElementById('saveRegionsBtn').addEventListener('click', () => this.saveRegions());
+                document.getElementById('clearRegionsBtn').addEventListener('click', () => this.clearRegions());
+                
+                // Grid snap controls
+                document.getElementById('gridSnapToggle').addEventListener('change', (e) => {
+                    this.gridSnap = e.target.checked;
+                    if (this.gridSnap) {
+                        this.snapSelectionSizeToGrid();
+                    }
+                });
+                
+                document.getElementById('gridSizeInput').addEventListener('input', (e) => {
+                    this.gridSize = parseInt(e.target.value) || 28;
+                    if (this.gridSnap) {
+                        this.snapSelectionSizeToGrid();
+                    }
+                });
+                
+                // Size input buttons
+                document.querySelectorAll('.size-input-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const inputId = e.target.dataset.input;
+                        const direction = e.target.dataset.direction;
+                        this.adjustSizeInput(inputId, direction);
+                    });
+                });
+                
+                // Selection size inputs - direct input handling
+                document.getElementById('selectionWidth').addEventListener('input', (e) => {
+                    let value = parseInt(e.target.value) || 100;
+                    if (this.gridSnap) {
+                        value = Math.max(this.gridSize, Math.round(value / this.gridSize) * this.gridSize);
+                        e.target.value = value;
+                    }
+                    this.selection.width = value;
+                    this.updateSelectionOverlay();
+                });
+                
+                document.getElementById('selectionHeight').addEventListener('input', (e) => {
+                    let value = parseInt(e.target.value) || 100;
+                    if (this.gridSnap) {
+                        value = Math.max(this.gridSize, Math.round(value / this.gridSize) * this.gridSize);
+                        e.target.value = value;
+                    }
+                    this.selection.height = value;
+                    this.updateSelectionOverlay();
+                });
+                
+                // Canvas events
+                this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+                this.canvas.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
+                
+                // Processing modal
+                document.getElementById('closeProcessingBtn').addEventListener('click', () => {
+                    document.getElementById('processingModal').style.display = 'none';
+                    this.loadImages(); // Refresh to show updated results
+                });
+                
+                // Prompt list events
+                document.getElementById('promptList').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('remove-prompt-btn')) {
+                        e.target.parentElement.remove();
+                    }
+                });
+            }
+            
+            adjustSizeInput(inputId, direction) {
+                const input = document.getElementById(inputId);
+                let currentValue = parseInt(input.value) || 0;
+                
+                if (this.gridSnap) {
+                    if (direction === 'up') {
+                        const nextValue = Math.ceil((currentValue + 1) / this.gridSize) * this.gridSize;
+                        currentValue = Math.max(this.gridSize, nextValue);
+                    } else {
+                        const prevValue = Math.floor((currentValue - 1) / this.gridSize) * this.gridSize;
+                        currentValue = Math.max(this.gridSize, prevValue);
+                    }
+                } else {
+                    currentValue += direction === 'up' ? 1 : -1;
+                    currentValue = Math.max(1, currentValue);
+                }
+                
+                input.value = currentValue;
+                
+                if (inputId === 'selectionWidth') {
+                    this.selection.width = currentValue;
+                } else if (inputId === 'selectionHeight') {
+                    this.selection.height = currentValue;
+                }
+                
+                this.updateSelectionOverlay();
+            }
+            
+            async loadImages() {
+                try {
+                    const response = await fetch('/api/images');
+                    this.images = await response.json();
+                    this.renderImages();
+                    this.updateStats();
+                } catch (error) {
+                    console.error('Error loading images:', error);
+                    document.getElementById('imageCount').textContent = 'Error loading images';
+                }
+            }
+            
+            async loadModels() {
+                try {
+                    const response = await fetch('/api/models');
+                    const data = await response.json();
+                    this.models = data.models || [];
+                    
+                    const select = document.getElementById('modelSelect');
+                    select.innerHTML = '';
+                    
+                    this.models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.name;
+                        option.textContent = model.name;
+                        select.appendChild(option);
+                    });
+                    
+                    if (this.models.length > 0) {
+                        select.value = this.models[0].name;
+                    }
+                } catch (error) {
+                    console.error('Error loading models:', error);
+                }
+            }
+            
+            renderImages() {
+                const grid = document.getElementById('imagesGrid');
+                grid.innerHTML = '';
+                
+                this.images.forEach(image => {
+                    const card = document.createElement('div');
+                    card.className = 'image-card';
+                    
+                    const hasRegions = image.metadata && image.metadata.regions && image.metadata.regions.length > 0;
+                    const hasResults = image.metadata && image.metadata.results && image.metadata.results.length > 0;
+                    
+                    card.innerHTML = `
+                        <div class="image-card-header">
+                            <span>${image.name}</span>
+                            <span style="font-size: 0.8em;">
+                                ${hasRegions ? `📍 ${image.metadata.regions.length} regions` : ''}
+                                ${hasResults ? `✅ ${image.metadata.results.length} results` : ''}
+                            </span>
+                        </div>
+                        <div class="image-preview" data-image="${image.name}">
+                            <img src="${image.path}" alt="${image.name}">
+                        </div>
+                        <div class="regions-list">
+                            ${hasRegions ? image.metadata.regions.map((region, index) => `
+                                <div class="region-item">
+                                    <div class="region-item-header">
+                                        <span>Region ${index + 1}</span>
+                                        <button class="delete-region-btn" data-image="${image.name}" data-index="${index}">Delete</button>
+                                    </div>
+                                    <div class="region-coords">
+                                        X: ${region.x}, Y: ${region.y}, W: ${region.width}, H: ${region.height}
+                                    </div>
+                                </div>
+                            `).join('') : '<p style="color: #7f8c8d; text-align: center;">No regions defined</p>'}
+                        </div>
+                    `;
+                    
+                    grid.appendChild(card);
+                });
+                
+                document.querySelectorAll('.image-preview').forEach(preview => {
+                    preview.addEventListener('click', (e) => {
+                        const imageName = e.currentTarget.dataset.image;
+                        this.openEditor(imageName);
+                    });
+                });
+                
+                document.querySelectorAll('.delete-region-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const imageName = e.target.dataset.image;
+                        const index = parseInt(e.target.dataset.index);
+                        this.deleteRegion(imageName, index);
+                    });
+                });
+                
+                document.getElementById('imageCount').textContent = `${this.images.length} images loaded`;
+            }
+            
+            updateStats() {
+                let totalRegions = 0;
+                let processedImages = 0;
+                
+                this.images.forEach(image => {
+                    if (image.metadata) {
+                        if (image.metadata.regions) {
+                            totalRegions += image.metadata.regions.length;
+                        }
+                        if (image.metadata.results && image.metadata.results.length > 0) {
+                            processedImages++;
+                        }
+                    }
+                });
+                
+                document.getElementById('totalImages').textContent = this.images.length;
+                document.getElementById('totalRegions').textContent = totalRegions;
+                document.getElementById('processedImages').textContent = processedImages;
+            }
+            
+            async openEditor(imageName) {
+                this.currentImage = this.images.find(img => img.name === imageName);
+                if (!this.currentImage) return;
+                
+                const response = await fetch(`/api/image/${imageName}`);
+                const data = await response.json();
+                
+                const img = new Image();
+                img.onload = () => {
+                    this.canvas.width = img.width;
+                    this.canvas.height = img.height;
+                    this.ctx.drawImage(img, 0, 0);
+                    
+                    this.regions = this.currentImage.metadata?.regions || [];
+                    this.renderRegionsPreview();
+                    
+                    this.selection = {
+                        x: 0,
+                        y: 0,
+                        width: 100,
+                        height: 100
+                    };
+                    document.getElementById('selectionWidth').value = 100;
+                    document.getElementById('selectionHeight').value = 100;
+                    
+                    this.gridSnap = document.getElementById('gridSnapToggle').checked;
+                    this.gridSize = parseInt(document.getElementById('gridSizeInput').value) || 28;
+                    
+                    if (this.gridSnap) {
+                        this.snapSelectionSizeToGrid();
+                    }
+                    
+                    this.updateSelectionOverlay();
+                    
+                    document.getElementById('editorTitle').textContent = `Edit Regions: ${imageName}`;
+                    document.getElementById('editorModal').style.display = 'flex';
+                };
+                img.src = data.image;
+            }
+            
+            handleMouseDown(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const handle = this.getHandleAtPosition(x, y);
+                if (handle) {
+                    this.isResizing = true;
+                    this.resizeHandle = handle;
+                    this.originalSelection = {...this.selection};
+                    this.dragStartX = x;
+                    this.dragStartY = y;
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (this.isPointInSelection(x, y)) {
+                    this.isDragging = true;
+                    this.originalSelection = {...this.selection};
+                    this.dragStartX = x;
+                    this.dragStartY = y;
+                    e.preventDefault();
+                    return;
+                }
+                
+                this.isCreatingSelection = true;
+                this.selection.x = x;
+                this.selection.y = y;
+                this.selection.width = 0;
+                this.selection.height = 0;
+            }
+            
+            handleMouseMove(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (this.isResizing && this.resizeHandle) {
+                    this.resizeSelection(x, y);
+                    e.preventDefault();
+                    return;
+                }
+                
+                if (this.isDragging) {
+                    const deltaX = x - this.dragStartX;
+                    const deltaY = y - this.dragStartY;
+                    
+                    this.selection.x = this.originalSelection.x + deltaX;
+                    this.selection.y = this.originalSelection.y + deltaY;
+                    
+                    this.selection.x = Math.max(0, Math.min(this.canvas.width - this.selection.width, this.selection.x));
+                    this.selection.y = Math.max(0, Math.min(this.canvas.height - this.selection.height, this.selection.y));
+                    
+                    this.updateSelectionOverlay();
+                    return;
+                }
+                
+                if (this.isCreatingSelection) {
+                    this.selection.width = x - this.selection.x;
+                    this.selection.height = y - this.selection.y;
+                    
+                    if (this.selection.width < 0) {
+                        this.selection.x += this.selection.width;
+                        this.selection.width = Math.abs(this.selection.width);
+                    }
+                    if (this.selection.height < 0) {
+                        this.selection.y += this.selection.height;
+                        this.selection.height = Math.abs(this.selection.height);
+                    }
+                    
+                    if (this.gridSnap) {
+                        this.snapSelectionSizeToGrid();
+                    }
+                    
+                    this.updateSelectionOverlay();
+                    return;
+                }
+                
+                const handle = this.getHandleAtPosition(x, y);
+                if (handle) {
+                    this.canvas.style.cursor = this.getCursorForHandle(handle);
+                } else if (this.isPointInSelection(x, y)) {
+                    this.canvas.style.cursor = 'move';
+                } else {
+                    this.canvas.style.cursor = 'crosshair';
+                }
+            }
+            
+            handleMouseUp(e) {
+                if (this.isCreatingSelection) {
+                    this.selection.width = Math.max(10, this.selection.width);
+                    this.selection.height = Math.max(10, this.selection.height);
+                    
+                    if (this.gridSnap) {
+                        this.snapSelectionSizeToGrid();
+                    }
+                    
+                    document.getElementById('selectionWidth').value = Math.round(this.selection.width);
+                    document.getElementById('selectionHeight').value = Math.round(this.selection.height);
+                }
+                
+                this.isDragging = false;
+                this.isResizing = false;
+                this.isCreatingSelection = false;
+                this.resizeHandle = null;
+                this.originalSelection = null;
+            }
+            
+            getCornerPosition(handle) {
+                switch(handle) {
+                    case 'nw': return { x: this.selection.x, y: this.selection.y };
+                    case 'ne': return { x: this.selection.x + this.selection.width, y: this.selection.y };
+                    case 'sw': return { x: this.selection.x, y: this.selection.y + this.selection.height };
+                    case 'se': return { x: this.selection.x + this.selection.width, y: this.selection.y + this.selection.height };
+                    default: return null;
+                }
+            }
+            
+            snapSelectionSizeToGrid() {
+                if (!this.gridSnap) return;
+                
+                this.selection.width = Math.max(this.gridSize, Math.round(this.selection.width / this.gridSize) * this.gridSize);
+                this.selection.height = Math.max(this.gridSize, Math.round(this.selection.height / this.gridSize) * this.gridSize);
+                
+                document.getElementById('selectionWidth').value = this.selection.width;
+                document.getElementById('selectionHeight').value = this.selection.height;
+            }
+            
+            isPointInSelection(x, y) {
+                return x >= this.selection.x && x <= this.selection.x + this.selection.width &&
+                       y >= this.selection.y && y <= this.selection.y + this.selection.height;
+            }
+            
+            getHandleAtPosition(x, y) {
+                const handleSize = 12;
+                const tolerance = handleSize / 2;
+                
+                const handles = [
+                    { type: 'nw', x: this.selection.x, y: this.selection.y },
+                    { type: 'ne', x: this.selection.x + this.selection.width, y: this.selection.y },
+                    { type: 'sw', x: this.selection.x, y: this.selection.y + this.selection.height },
+                    { type: 'se', x: this.selection.x + this.selection.width, y: this.selection.y + this.selection.height }
+                ];
+                
+                for (const handle of handles) {
+                    if (Math.abs(x - handle.x) <= tolerance && Math.abs(y - handle.y) <= tolerance) {
+                        return handle.type;
+                    }
+                }
+                
+                return null;
+            }
+            
+            getCursorForHandle(handle) {
+                switch(handle) {
+                    case 'nw': return 'nw-resize';
+                    case 'ne': return 'ne-resize';
+                    case 'sw': return 'sw-resize';
+                    case 'se': return 'se-resize';
+                    default: return 'crosshair';
+                }
+            }
+            
+            resizeSelection(x, y) {
+                if (!this.originalSelection) return;
+                
+                // Determine the corner that stays fixed
+                let fixedCorner = {};
+                switch(this.resizeHandle) {
+                    case 'nw': fixedCorner = { x: this.originalSelection.x + this.originalSelection.width, y: this.originalSelection.y + this.originalSelection.height }; break;
+                    case 'ne': fixedCorner = { x: this.originalSelection.x, y: this.originalSelection.y + this.originalSelection.height }; break;
+                    case 'sw': fixedCorner = { x: this.originalSelection.x + this.originalSelection.width, y: this.originalSelection.y }; break;
+                    case 'se': fixedCorner = { x: this.originalSelection.x, y: this.originalSelection.y }; break;
+                }
+
+                // Calculate the new position of the dragged corner
+                let newCorner = { x, y };
+
+                // Apply grid snap to the dragged corner's position
+                if (this.gridSnap) {
+                    newCorner.x = Math.round(newCorner.x / this.gridSize) * this.gridSize;
+                    newCorner.y = Math.round(newCorner.y / this.gridSize) * this.gridSize;
+                }
+                
+                // Calculate new selection properties based on fixed and new corners
+                const newX = Math.min(fixedCorner.x, newCorner.x);
+                const newY = Math.min(fixedCorner.y, newCorner.y);
+                const newWidth = Math.abs(fixedCorner.x - newCorner.x);
+                const newHeight = Math.abs(fixedCorner.y - newCorner.y);
+
+                // Ensure minimum size
+                const minSize = this.gridSnap ? this.gridSize : 10;
+                if (newWidth < minSize || newHeight < minSize) {
+                    return; // Don't resize if it's too small
+                }
+
+                // Apply the new values
+                this.selection.x = newX;
+                this.selection.y = newY;
+                this.selection.width = newWidth;
+                this.selection.height = newHeight;
+                
+                // Update size inputs
+                document.getElementById('selectionWidth').value = Math.round(this.selection.width);
+                document.getElementById('selectionHeight').value = Math.round(this.selection.height);
+                
+                this.updateSelectionOverlay();
+            }
+            
+            updateSelectionOverlay() {
+                const overlay = document.getElementById('editorSelectionOverlay');
+                const info = document.getElementById('editorSelectionInfo');
+                
+                overlay.style.left = `${this.selection.x}px`;
+                overlay.style.top = `${this.selection.y}px`;
+                overlay.style.width = `${this.selection.width}px`;
+                overlay.style.height = `${this.selection.height}px`;
+                
+                info.textContent = `X: ${Math.round(this.selection.x)}, Y: ${Math.round(this.selection.y)}, W: ${Math.round(this.selection.width)}, H: ${Math.round(this.selection.height)}`;
+            }
+            
+            addRegion() {
+                const region = {
+                    x: Math.round(this.selection.x),
+                    y: Math.round(this.selection.y),
+                    width: Math.round(this.selection.width),
+                    height: Math.round(this.selection.height)
+                };
+                
+                this.regions.push(region);
+                this.renderRegionsPreview();
+            }
+            
+            renderRegionsPreview() {
+                const preview = document.getElementById('regionsPreview');
+                preview.innerHTML = '';
+                
+                this.regions.forEach((region, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'region-item';
+                    item.innerHTML = `
+                        <div class="region-item-header">
+                            <span>Region ${index + 1}</span>
+                            <button class="delete-region-btn" data-index="${index}">Delete</button>
+                        </div>
+                        <div class="region-coords">
+                            X: ${region.x}, Y: ${region.y}, W: ${region.width}, H: ${region.height}
+                        </div>
+                    `;
+                    preview.appendChild(item);
+                });
+                
+                preview.querySelectorAll('.delete-region-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        this.regions.splice(index, 1);
+                        this.renderRegionsPreview();
+                    });
+                });
+            }
+            
+            async saveRegions() {
+                if (!this.currentImage) return;
+                
+                try {
+                    const response = await fetch(`/api/image/${this.currentImage.name}/regions`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ regions: this.regions })
+                    });
+                    
+                    if (response.ok) {
+                        document.getElementById('editorModal').style.display = 'none';
+                        this.loadImages();
+                    }
+                } catch (error) {
+                    console.error('Error saving regions:', error);
+                    alert('Error saving regions');
+                }
+            }
+            
+            clearRegions() {
+                this.regions = [];
+                this.renderRegionsPreview();
+            }
+            
+            async deleteRegion(imageName, index) {
+                const image = this.images.find(img => img.name === imageName);
+                if (!image || !image.metadata || !image.metadata.regions) return;
+                
+                image.metadata.regions.splice(index, 1);
+                
+                try {
+                    const response = await fetch(`/api/image/${imageName}/regions`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ regions: image.metadata.regions })
+                    });
+                    
+                    if (response.ok) {
+                        this.loadImages();
+                    }
+                } catch (error) {
+                    console.error('Error deleting region:', error);
+                }
+            }
+            
+            addPrompt() {
+                const promptList = document.getElementById('promptList');
+                const promptItem = document.createElement('div');
+                promptItem.className = 'prompt-item';
+                promptItem.innerHTML = `
+                    <input type="text" class="prompt-input" placeholder="Enter prompt...">
+                    <button class="remove-prompt-btn">✕</button>
+                `;
+                promptList.appendChild(promptItem);
+            }
+            
+            async processAllImages() {
+                const prompts = Array.from(document.querySelectorAll('.prompt-input'))
+                    .map(input => input.value.trim())
+                    .filter(value => value !== '');
+                
+                if (prompts.length === 0) {
+                    alert('Please add at least one prompt');
+                    return;
+                }
+                
+                const model = document.getElementById('modelSelect').value;
+                if (!model) {
+                    alert('Please select a model');
+                    return;
+                }
+                
+                const modal = document.getElementById('processingModal');
+                const log = document.getElementById('processingLog');
+                const status = document.getElementById('processingStatus');
+                
+                modal.style.display = 'flex';
+                log.innerHTML = '';
+                document.getElementById('closeProcessingBtn').style.display = 'none';
+                
+                const initEntry = document.createElement('div');
+                initEntry.className = 'log-entry info';
+                initEntry.textContent = `Starting batch processing with model: ${model}`;
+                log.appendChild(initEntry);
+                
+                status.textContent = 'Processing images...';
+                
+                try {
+                    const response = await fetch('/api/process-all', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ model, prompts })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Server responded with status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.results) {
+                        data.results.forEach(result => {
+                            const entry = document.createElement('div');
+                            entry.className = result.error ? 'log-entry error' : 'log-entry success';
+                            entry.textContent = result.error 
+                                ? `❌ ${result.image}: ${result.error}`
+                                : `✅ ${result.image}: Processed region (${result.region.x},${result.region.y})`;
+                            log.appendChild(entry);
+                        });
+                    }
+                    
+                    status.textContent = 'Processing complete!';
+                    document.getElementById('closeProcessingBtn').style.display = 'block';
+                } catch (error) {
+                    console.error('Error processing images:', error);
+                    status.textContent = 'Error occurred during processing';
+                    const entry = document.createElement('div');
+                    entry.className = 'log-entry error';
+                    entry.textContent = `Error: ${error.message}`;
+                    log.appendChild(entry);
+                    document.getElementById('closeProcessingBtn').style.display = 'block';
+                }
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            new ImageRegionManager();
+        });
+    </script>
+</body>
+</html>
