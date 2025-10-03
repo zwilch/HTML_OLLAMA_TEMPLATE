@@ -5,20 +5,15 @@
 ├── output/         # Results will be saved here
 └── public/         # Create this folder and place the HTML file here as index.html
 ```
- 
- 
-
-     Start the server: node image-server.js
- 
- 
- 
-
-     Access the web interface:
-    Open your browser and go to http://localhost:3000
+# Install
+``npm install``
+# Start the server
+``node image-server.js``
+# Access the web interface:
+Open your browser and go to http://localhost:3000
      
-
-Features 
-Web Interface: 
+# Features 
+## Web Interface: 
 
      Image Grid View: Shows all images from the images directory
      Region Editor: Click on any image to open the region selector
@@ -28,7 +23,7 @@ Web Interface:
      Visual Feedback: See which images have regions and results
      
 
-Region Selection: 
+## Region Selection: 
 
      Drag to Select: Click and drag to create a selection
      Resize Handles: Drag corners to resize selections
@@ -37,7 +32,7 @@ Region Selection:
      Multiple Regions: Save multiple regions per image
      
 
-Batch Processing: 
+## Batch Processing: 
 
      Multiple Prompts: Add multiple OCR prompts
      Model Selection: Choose from available Ollama models
@@ -45,7 +40,7 @@ Batch Processing:
      Error Handling: See which images failed and why
      
 
-Data Storage: 
+## Data Storage: 
 
      JSON Metadata: Each image has a corresponding JSON file with regions and results
      Text Files: OCR results saved as individual text files
