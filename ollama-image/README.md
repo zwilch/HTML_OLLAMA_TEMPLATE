@@ -1,10 +1,10 @@
-project/
+```project/
 ├── image-server.js
 ├── package.json
 ├── images/         # Place your images here
 ├── output/         # Results will be saved here
 └── public/         # Create this folder and place the HTML file here as index.html
- 
+```
  
  
 
